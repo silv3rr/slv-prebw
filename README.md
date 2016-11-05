@@ -34,11 +34,13 @@ you'll need:
 
 6. config dZSbot.conf / ngBot.conf<br>
    you need to add PREBW to msgtypes(SECTION)<br>
-   -and-<br> <pre>
+   -and-<br>
+<pre>
    set redirect(PREBW)  $mainchan
    set disable(PREBW)   0
    set chanlist(PREBW)  $mainchan
-   set variables(PREBW) "%pf %prebw"</pre>
+   set variables(PREBW) "%pf %prebw"
+</pre>
 
 7. add to theme:<br>
    `announce.PREBW = "[%b{prebw }][%section] %prebw"`
