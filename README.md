@@ -14,6 +14,8 @@ you'll need:
 - pzs-ng's sitewho.
 - site pre script that logs PRE to glftpd.log (tested with foopre).
 
+* * *
+
 1. put slv-prebw.sh in glftpd/bin dir.
 2. put PreBW.tcl in eggdrop/scripts/pzs-ng/plugins/PreBW.tcl.
 
