@@ -4,7 +4,7 @@ if [ "${1}" == "" ]; then
 fi
 
 ###################################################################################################################
-# slv-prebw v0.52 02142007 slv (first public rls)
+# slv-prebw v0.53 24072012 slv
 # based on wspre-bw.sh, from *somewhere* ;)
 ###################################################################################################################
 # todo: -round floating points better (awk)
@@ -15,7 +15,7 @@ GLROOT="/jail/glftpd"
 GLLOG="/ftp-data/logs/glftpd.log"
 SITEWHO="/bin/sitewho"
 #SLEEPS="1 1 1"
-SLEEPS="30 15 15 15 15"
+SLEEPS="2 3 5 5 5"
 
 KBS="kb/s"
 MBS="mb/s"
@@ -47,8 +47,6 @@ for slp in ${SLEEPS}; do
     bw=0
     u=0
     let "time=time+slp"
-#    for leech in `cat pretest.txt | grep ${rls} | grep \"DN\" | cut -d '"' -f 12 | cut -d '.' -f 1`; do
-#    for leech in `cat pretest.txt | grep ${rls} | grep \"DN\" | cut -d '"' -f 12`; do
     for leech in `${GLROOT}${SITEWHO} --raw | grep ${rls} | grep \"DN\" | cut -d '"' -f 12`; do
         leech="`echo "${leech}" | awk '{printf "%0.0f", $1}'`"
         let "bw=bw+leech"
@@ -68,21 +66,11 @@ do    # List all the elements in the array.
     let "index = ${index} + 1"
 done
 
-#element_count=${#users[@]}; index=0
-#userstotal="0"
-#while [ "${index}" -lt "${element_count}" ]
-#do    # List all the elements in the array.
-#     userstotal=`echo "${userstotal} + ${users[$index]}" | bc`
-#    let "index = ${index} + 1"
-#done
-
 bwavgtotal="`echo "${bwavgtotal} / ${i}" | bc`"
-#bwavgtext="${AVG}`echo ${userstotal}${SEP}`${BOLD}`proc_convert ${bwavgtotal}`${BOLD}"
 bwavgtext="${AVG}${BOLD}`proc_convert ${bwavgtotal}`${BOLD}"
 
 if [ "$bwavgtotal" != "0" ]; then
-#    echo \"${rls}\" \"${bwtext}${bwavgtext}\" ${GLROOT}${GLLOG}
-    echo `date "+%a %b %d %T %Y"` PREBW: \"${rls}\" \"${bwtext}\" >> ${GLROOT}${GLLOG}
+    echo `date "+%a %b %d %T %Y"` PREBW: \"${rls}\" \"${bwtext}${bwavgtext}\" >> ${GLROOT}${GLLOG}
 fi
 
 exit 0

@@ -1,53 +1,55 @@
 ###################################################################################################################
-# slv-prebw v0.52 02142007 slv (first public rls)
+# slv-prebw v0.53 21072012 silver for ngBot/dZSbot
 ###################################################################################################################
 
-set slvprebw "$glroot/bin/slv-prebw.sh"
+namespace eval ::ngBot::plugin::PreBW {
+    variable ns [namespace current]
+    ## Config Settings ###############################
+    ##
+    ## Choose one of two settings, the first when using ngBot, the second when using dZSbot
+    variable np [namespace qualifiers [namespace parent]]
+    #variable np ""
+    ##
+    set slvprebw "$::ngBot::glroot/bin/slv-prebw.sh"
+    variable scriptName ${ns}::LogEvent
+    bind evnt -|- prerehash ${ns}::DeInit
 
-namespace eval ::ngBot::PreBW {
-    variable scriptName [namespace current]::LogEvent
-    bind evnt -|- prerehash [namespace current]::DeInit
-}
-
-proc ::ngBot::PreBW::Init {args} {
-    global precommand
-    variable scriptName
-    lappend precommand(PRE) $scriptName
-    putlog "\[ngBot\] PreBW :: Loaded successfully."
-    return
-}
-
-proc ::ngBot::PreBW::DeInit {args} {
-    global precommand
-    variable scriptName
-    if {[info exists precommand(PRE)] && [set pos [lsearch -exact $precommand(PRE) $scriptName]] !=  -1} {
-        set precommand(PRE) [lreplace $precommand(PRE) $pos $pos]
+    if {[string equal "" $np]} {
+            bind evnt -|- prerehash ${ns}::deinit
     }
-    namespace delete [namespace current]
-    catch {unbind evnt -|- prerehash [namespace current]::DeInit}
-    return
+
+    proc init {} {
+        variable np
+        variable scriptName
+        variable ${np}::precommand
+        lappend precommand(PRE) $scriptName
+        putlog "\[ngBot\] PreBW :: Loaded successfully."
+        return
+    }
+
+    proc deinit {} {
+        variable ns
+        variable np
+        variable scriptName
+        variable ${np}::precommand
+        if {[info exists precommand(PRE)] && [set pos [lsearch -exact $precommand(PRE) $scriptName]] !=  -1} {
+            set precommand(PRE) [lreplace $precommand(PRE) $pos $pos]
+        }
+        namespace delete $ns
+        catch {unbind evnt -|- prerehash ${ns}::deinit}
+        return
+    }
+
+    proc LogEvent {event section logData} {
+        variable slvprebw
+
+        if {![string equal "PRE" $event]} {return 1}
+        set fullpath [lindex $logData 0]
+        exec $slvprebw $fullpath &
+        return 1
+    }
 }
 
-#proc ::ngBot::PreBW::GetBW {args} {
-#    global binary announce speed theme speedmeasure speedthreshold
-#
-#    checkchan $nick $chan
-#
-#    set output "$theme(PREFIX)$announce(BW)"
-#    set raw [exec $binary(WHO) --nbw]
-#    set dn [format_speed [lindex $raw 3] "none"]
-#    set output [replacevar $output "%dnspeed" $dn]
-#    sndone "#test" $dn
-#    return $dn
-#}
-
-proc ::ngBot::PreBW::LogEvent {event section logData} {
-    global slvprebw
-
-    if {![string equal "PRE" $event]} {return 1}
-    set fullpath [lindex $logData 0]
-    exec $slvprebw $fullpath &
-    return 1
+if {[string equal "" $::ngBot::plugin::PreBW::np]} {
+        ::ngBot::plugin::PreBW::init
 }
-
-::ngBot::PreBW::Init
