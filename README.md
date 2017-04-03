@@ -1,5 +1,5 @@
 # slv-prebw
-###pzs-ng dZBot/ngbot plugin to show bw after pre
+### pzs-ng dZBot/ngbot plugin to show bw after pre
 
 so what's so special about ANOTHER prebw script? well, this one works
 seperate from pre script so you can prolly use it with every pre script
