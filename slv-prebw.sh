@@ -1,76 +1,125 @@
-#!/bin/bash
-if [ "${1}" == "" ]; then
+#!/usr/bin/env bash
+if [ "$1" == "" ]; then
     exit 1
 fi
 
-###################################################################################################################
-# slv-prebw v0.53 24072012 slv
-# based on wspre-bw.sh, from *somewhere* ;)
-###################################################################################################################
-# todo: -round floating points better (awk)
-#       -total users in avg
-###################################################################################################################
+##########################################################################
+# slv-prebw v1.0 20190609 slv
+##########################################################################
+# ..based on wspre-bw.sh, from *somewhere* ;)
+# + requires a recent version of bash
+# + check README.md on how to configure sitebot
 
 GLROOT="/jail/glftpd"
-GLLOG="/ftp-data/logs/glftpd.log"
-SITEWHO="/bin/sitewho"
-#SLEEPS="1 1 1"
-SLEEPS="2 3 5 5 5"
+GLLOG="$GLROOT/ftp-data/logs/glftpd.log"
+SITEWHO="$GLROOT/bin/sitewho"
+XFERLOG="$GLROOT/ftp-data/logs/xferlog"
 
-KBS="kb/s"
-MBS="mb/s"
-SEC="s: "
-AVG="avg: "
-SEP="@"
-SPACE=" "
-BOLD=""
+PREDIR="/site/groups"	# exclude affils predir
+TAILNUM="2500"			# tail xferlog, default is 2500 lines
+CAPS="2 3 5 5 5"		# capture output bw and intervals in seconds
+SPEED_UNIT="MBPS"		# transfer unit/s, default is MBPS [MBPS|MBIT]
+SIZE_UNIT="MB"			# size unit, default is MB [MB|GB]
+SHOW_ALWAYS="0"			# also announce if there's no prebw [0/1]
+SHOW_BWAVG="1"			# show average bw in announce [0/1]
+SHOW_TRAF="1"			# show total pre traffic by number of users [0/1]
 
-###################################################################################################################
-# ONLY EDIT BELOW IF YOU KNOW WHAT YOU'RE DOING
-###################################################################################################################
+# END OF CONFIG			# ONLY EDIT BELOW IF YOU KNOW WHAT YOU'RE DOING
+##########################################################################
 
-rls=${1}
+release="$1"
+SAVE_IFS="$IFS"
+if [ -z "$SPEED_UNIT" ]; then SPEED_UNIT="MBPS"; fi
+if [ -z "$SIZE_UNIT" ]; then SIZE_UNIT="MB"; fi
 
-proc_convert() {
-    if [ "${1}" -ge "0" ] && [ "${1}" -lt "1024" ]; then
-        echo "${1}${KBS}"
-    fi
-    if [ "${1}" -ge "1024" ]; then
-        echo "`echo "${1} 1024" | awk '{printf "%0.1f", $1 / $2}'`${MBS}"
-    fi
+### DEBUG ###
+DEBUG=0
+if echo "$@" | grep -q DEBUG; then DEBUG=1; fi
+if [ -z "$BWAVG_SHOW" ]; then BWAVG_SHOW="0"; fi
+if [ "$DEBUG" -eq 1 ]; then
+	#GLLOG="/dev/stdout"
+	SITEWHO="func_dbg_swho"
+	XFERLOG="test/xfer.txt"
+	CAPS="1 1 1 1 1"
+fi
+func_dbg_swho() { cat test/who.txt; }
+############
+
+func_cspeed() {
+	if [ "$SPEED_UNIT" = "MBPS" ]; then
+		echo | awk -v v="$1" '{ printf "%0.1f", v/1024 }'
+	elif [ "$SPEED_UNIT" = "MBIT" ]; then
+		echo | awk -v v="$1" '{ printf "%0.0f", v*8/1024 }'
+	fi
 }
 
-bwtext=""; time=0; i=0
+func_csize() {
+	if [ "$SIZE_UNIT" = "MB" ]; then
+		echo | awk -v v="$1" '{ printf "%0.1f", v/1024/1024 }'
+	elif [ "$SIZE_UNIT" = "GB" ]; then
+		echo | awk -v v="$1" '{ printf "%0.1f", v/1024/1024/1024 }'
+	fi
+}
 
-for slp in ${SLEEPS}; do
-    sleep $slp
-    bw=0
-    u=0
-    let "time=time+slp"
-    for leech in `${GLROOT}${SITEWHO} --raw | grep ${rls} | grep \"DN\" | cut -d '"' -f 12`; do
-        leech="`echo "${leech}" | awk '{printf "%0.0f", $1}'`"
-        let "bw=bw+leech"
-        let "u=u+1"
-    done
-    bwavg[i]="${bw}"
-    users[i]="${u}"
-    let "i=i+1"
-    bwtext="${bwtext}${time}${SEC}`echo ${u}${SEP}`${BOLD}`proc_convert "${bw}"`${BOLD}${SPACE}"
+func_ugcount() {
+	sed '/^ *$/d' | sort | uniq -c | sort -rnk1 | awk '{ print $2 }' | wc -l | sed 's/  *//g'
+}
+
+func_tail() {
+	tail -r /dev/null >/dev/null 2>&1 && \
+	{ tail -n $TAILNUM -r $XFERLOG; } || \
+	{ tail -n $TAILNUM $XFERLOG | tac; }
+}
+
+t=0; cnt=0; bwtext=""
+for s in ${CAPS}; do
+	b=0; u=0
+	sleep "$s"
+	t=$((t+s))
+	IFS=$'\n'
+	for dn in $( ${SITEWHO} --raw | grep "${release}" | grep '"DN"' | awk -F\" '{ print $12 }' ); do
+		dn="$( echo "${dn}" | awk '{ printf "%0.0f", $1 }' )"
+		b="$((b+dn))"
+		u="$((u+1))"
+	done
+	bw_arr[cnt]="${b}"
+	cnt=$((cnt+1))
+	bwtext="${bwtext}\"${t}\" \"${u}\" \"$(func_cspeed ${b})\" "
 done
 
-element_count=${#bwavg[@]}; index=0
-bwavgtotal="0"
-while [ "${index}" -lt "${element_count}" ]
-do    # List all the elements in the array.
-    bwavgtotal=`echo "${bwavgtotal} + ${bwavg[$index]}" | bc`
-    let "index = ${index} + 1"
+i=0; bw_total="0"
+while [ "${i}" -lt "${#bw_arr[@]}" ]; do
+	bw_total=$((bw_total+${bw_arr[$i]}))
+	i=$((i+1))
 done
+bwavg="$((bw_total/cnt))"
 
-bwavgtotal="`echo "${bwavgtotal} / ${i}" | bc`"
-bwavgtext="${AVG}${BOLD}`proc_convert ${bwavgtotal}`${BOLD}"
-
-if [ "$bwavgtotal" != "0" ]; then
-    echo `date "+%a %b %d %T %Y"` PREBW: \"${rls}\" \"${bwtext}${bwavgtext}\" >> ${GLROOT}${GLLOG}
+if [ "${bwavg}" -ne "0" ] || [ "${SHOW_ALWAYS}" -eq "1" ]; then
+	if [ "$SHOW_BWAVG" -eq 1 ]; then
+		bwavgtext=" \"$(func_cspeed ${bwavg})\""
+	fi
+	if [ "${SHOW_TRAF}" -eq "1" ]; then
+		i=0; traf_total=0; traftext=""
+		IFS=$'\n'
+		for line in $( func_tail | grep -v "${PREDIR}" | grep " o " | grep "${release}" | awk '{ print $8, $14, $15 }' ); do
+			IFS=" " read -r traf uname gname <<< "${line}"
+			traf_total="$((traf_total+traf))"
+			un_arr[i]="${uname}"
+			gn_arr[i]="${gname}"
+			i="$((i+1))"
+		done
+		u_cnt="$( printf "%s\n" "${un_arr[@]}" | func_ugcount )"
+		g_cnt="$( printf "%s\n" "${gn_arr[@]}" | func_ugcount )"
+		if [ "${traf_total}" -ne "0" ]; then
+			traftext=" \"$(func_csize ${traf_total})\" \"${u_cnt}\" \"${g_cnt}\""
+		fi
+	fi
+	if [ "$DEBUG" -eq 1 ]; then echo "DEBUG: traf_total=$traf_total bwavgtext=$bwavgtext"; fi
+	echo "$( date "+%a %b %d %T %Y" ) PREBW: \"${release}\" ${bwtext/% /}${bwavgtext}${traftext}" >> ${GLLOG}
 fi
 
+IFS="$SAVE_IFS"
 exit 0
+
+# shellcheck disable=SC2035
+/* vim: set noai tabstop=4 shiftwidth=4 softtabstop=4 noexpandtab: */
