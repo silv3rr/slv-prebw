@@ -1,1 +1,8 @@
+.vscode/
+archive/
 dev/
+*.bak
+*.log
+*.swp
+*.tmp
+typescript
