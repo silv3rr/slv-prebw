@@ -1,6 +1,7 @@
 .vscode/
 archive/
 dev/
+test/
 *.bak
 *.log
 *.swp
