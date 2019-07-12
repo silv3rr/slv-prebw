@@ -4,7 +4,7 @@ if [ "$1" == "" ]; then
 fi
 
 ##########################################################################
-# slv-prebw v1.0 20190609 slv
+# slv-prebw v1.1 20190712 slv
 ##########################################################################
 # ..based on wspre-bw.sh, from *somewhere* ;)
 # + requires a recent version of bash
@@ -99,7 +99,7 @@ if [ "${bwavg}" -ne "0" ] || [ "${SHOW_ALWAYS}" -eq "1" ]; then
 		bwavgtext=" \"$(func_cspeed ${bwavg})\""
 	fi
 	if [ "${SHOW_TRAF}" -eq "1" ]; then
-		i=0; traf_total=0; traftext=""
+		i=0; traftext=""; traf_total=0; u_cnt=0; g_cnt=0
 		IFS=$'\n'
 		for line in $( func_tail | grep -v "${PREDIR}" | grep " o " | grep "${release}" | awk '{ print $8, $14, $15 }' ); do
 			IFS=" " read -r traf uname gname <<< "${line}"
@@ -110,9 +110,7 @@ if [ "${bwavg}" -ne "0" ] || [ "${SHOW_ALWAYS}" -eq "1" ]; then
 		done
 		u_cnt="$( printf "%s\n" "${un_arr[@]}" | func_ugcount )"
 		g_cnt="$( printf "%s\n" "${gn_arr[@]}" | func_ugcount )"
-		if [ "${traf_total}" -ne "0" ]; then
-			traftext=" \"$(func_csize ${traf_total})\" \"${u_cnt}\" \"${g_cnt}\""
-		fi
+		traftext=" \"$(func_csize ${traf_total})\" \"${u_cnt}\" \"${g_cnt}\""
 	fi
 	if [ "$DEBUG" -eq 1 ]; then echo "DEBUG: traf_total=$traf_total bwavgtext=$bwavgtext"; fi
 	echo "$( date "+%a %b %d %T %Y" ) PREBW: \"${release}\" ${bwtext/% /}${bwavgtext}${traftext}" >> ${GLLOG}

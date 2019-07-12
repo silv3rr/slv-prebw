@@ -13,11 +13,16 @@ if it doesnt work for you - too bad, it does for me! :p
 
 ### You'll need
 
+- linux or freebsd
 - a recent version of bash
 - pzs-ng (sitewho, sitebot)
 - site pre script that logs PRE to glftpd.log (tested with foo-pre)
 
 ### Changes
+
+#### Update v1.1 20190712
+
+- small fix if total traffic is 0
 
 #### Update v1.0 20190609
 
